@@ -1,0 +1,182 @@
+====To implement a complete AWS CI/CD pipeline from GitHub to AWS, you need a combination of AWS services, Docker, GitHub Actions, networking, security, and monitoring.====
+
+
+-================Step 1: Create the project===========
+mkdir aws-cicd-typescript
+cd aws-cicd-typescript
+
+npm init -y
+
+npm install express mongoose dotenv
+
+npm install -D typescript tsx @types/node @types/express
+
+
+=================Step 2: Configure package.json===============
+Update your scripts and package configuration:
+
+  
+{
+  "name": "aws-cicd-typescript",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "node -e \"console.log('Tests passed')\""
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "mongoose": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
+
+  ======== step-3 create typescriptFile ==================
+
+Run this command:
+npx tsc --init
+
+  ==> then after  edit the " tsconfig.json "
+  ===> with these code  
+  
+  ====>
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}
+
+===== step-4 ==============
+
+
+  -=== run your project
+  with npm run dev
+
+  ==> check your project health satus 
+
+  curl:http://localhost:4000/ap/health
+  Expected response:
+{
+  "status": "healthy",
+  "service": "typescript-api"
+}
+
+
+
+ ============ step -5 ===Docker implementation-=========================
+Now we package our application.
+
+  Step 1: Create Dockerfile
+
+# stage --1
+
+# Use node:22-alpine as base image
+FROM node:22-alpine AS builder
+
+# Create app directory  
+WORKDIR /app
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci 
+
+# Copy tsconfig.json for TypeScript configuration 
+COPY tsconfig.json ./
+
+# Copy source code
+COPY src ./src
+
+# Build the TypeScript code 
+RUN npm run build
+
+
+# stage --2====================
+
+# Use node:22-alpine as base image for production
+FROM node:22-alpine AS production
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variable for production
+ENV NODE_ENV=production
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install only production dependencies and clean npm cache
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Copy built files from the builder stage
+COPY --from=builder /app/dist ./dist
+
+# Expose port
+EXPOSE 4000
+
+# Set user to node
+USER node
+
+# Start the application
+CMD ["node", "dist/server.js"]
+
+=> Step 2: Create .dockerignore
+
+  
+node_modules
+dist
+.env
+.git
+.github
+npm-debug.log
+
+Step 3: Build Docker image
+docker build -t aws-cicd-api:v1 .  ## for build image
+docker run -d --name aws-cicd -p 4000:4000 --env-file .env -e PORT=4000 aws-cicd  # for run image inside the container
+
+
+
+  
+  
+
+  
+
+
+  
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
